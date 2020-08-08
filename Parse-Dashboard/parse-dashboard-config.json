@@ -1,14 +1,68 @@
 {
-  "apps": [
+  "apps": [{
+    "serverURL": "https://uat-server.qik.ai/app",
+    "appId": "nxg-parse-appid",
+    "masterKey": "nxg-parse-masterkeyy",
+    "appName": "NXG App Name",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://server.qik.ai/app",
+    "appId": "shbjmmhfcp",
+    "masterKey": "qtvlqrxyrj",
+    "appName": "Qik Server Prod",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://realtimedp.herokuapp.com/app",
+    "appId": "realtimedp",
+    "masterKey": "rtd-masterkey",
+    "appName": "realtimedp",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://acrcloud.herokuapp.com/app",
+    "appId": "AcrCloud",
+    "masterKey": "ACRMasterKey",
+    "appName": "AcrCloud",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://dev-server.qik.ai/app",
+    "appId": "qik-dev-app",
+    "masterKey": "qik-dev-masterkey",
+    "appName": "Qik-server-dev",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  }
+],
+  "iconsFolder": "icons",
+"users": [
     {
-      "serverURL": "http://localhost:1338/parse",
-      "appId": "hello",
-      "masterKey": "world",
-      "appName": "",
-      "iconName": "",
-      "primaryBackgroundColor": "",
-      "secondaryBackgroundColor": ""
+      "user":"amol",
+      "pass":"abc123456"
+    },
+    {
+      "user":"pooja",
+      "pass":"abc1234567",
+"apps": [{"appId": "shbjmmhfcp"}]
+    },
+{
+      "user":"alka",
+      "pass":"nxg123456",
+"apps": [{"appId":"AcrCloud"}]
+    },
+{
+      "user":"jagdish",
+      "pass":"abcdefg",
+"apps": [{"appId": "qik-dev-app"},{"appId":"realtimedp"}]
     }
   ],
-  "iconsFolder": "icons"
+  "useEncryptedPasswords": false,
+  "allowInsecureHTTP":true
 }
