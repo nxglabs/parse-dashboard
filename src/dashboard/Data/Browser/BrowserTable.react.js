@@ -98,14 +98,15 @@ export default class BrowserTable extends React.Component {
       }
     }
 
-    let headers = this.props.order.map(({ name, width, visible }) => (
+    let headers = this.props.order.map(({ name, width, visible, preventSort }) => (
       {
         width: width,
         name: name,
         type: this.props.columns[name].type,
         targetClass: this.props.columns[name].targetClass,
         order: ordering.col === name ? ordering.direction : null,
-        visible
+        visible,
+        preventSort
       }
     ));
     let editor = null;
@@ -119,7 +120,7 @@ export default class BrowserTable extends React.Component {
       if (this.props.newObject && this.state.offset <= 0) {
         const currentCol = this.props.current && this.props.current.row === -1 ? this.props.current.col : undefined;
         newRow = (
-          <div style={{ marginBottom: 30, borderBottom: '1px solid #169CEE' }}>
+          <div style={{ borderBottom: '1px solid #169CEE' }}>
             <BrowserRow
               key={-1}
               className={this.props.className}
@@ -140,7 +141,24 @@ export default class BrowserTable extends React.Component {
               setRelation={this.props.setRelation}
               setCopyableValue={this.props.setCopyableValue}
               setContextMenu={this.props.setContextMenu}
-              onEditSelectedRow={this.props.onEditSelectedRow} />
+              onEditSelectedRow={this.props.onEditSelectedRow}
+            />
+            <Button
+              value="Add"
+              width="55px"
+              primary={true}
+              onClick={() => {
+                this.props.onSaveNewRow();
+                this.props.setEditing(false);
+              }}
+              additionalStyles={{ fontSize: '12px', height: '20px', lineHeight: '20px', margin: '5px', padding: '0'}}
+            />
+            <Button
+              value="Cancel"
+              width="55px"
+              onClick={this.props.onAbortAddRow}
+              additionalStyles={{ fontSize: '12px', height: '20px', lineHeight: '20px', margin: '5px', padding: '0'}}
+            />
           </div>
         );
       }
@@ -199,6 +217,9 @@ export default class BrowserTable extends React.Component {
             if (this.props.className === '_User' || this.props.className === '_Session') {
               readonly = true;
             }
+          }
+          if(name === 'expiresAt' && this.props.className === '_Session'){
+            readonly = true;
           }
           let obj = this.props.current.row < 0 ? this.props.newObject : this.props.data[this.props.current.row];
           let value = obj;
