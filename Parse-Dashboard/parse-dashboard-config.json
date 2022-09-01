@@ -1,14 +1,93 @@
 {
-  "apps": [
+  "apps": [{
+    "serverURL": "https://uat-server.qik.ai/app",
+    "appId": "nxg-parse-appid",
+    "masterKey": "nxg-parse-masterkeyy",
+    "appName": "Qik Server UAT",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://server2.qik.ai/app",
+    "appId": "shbjnnhfcp",
+    "masterKey": "qtvlqrxyrj",
+    "appName": "Qik Server Prod",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://realtimedp.herokuapp.com/app",
+    "appId": "realtimedp",
+    "masterKey": "rtd-masterkey",
+    "appName": "realtimedp",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://qik-server-dev2.herokuapp.com/app",
+    "appId": "qik-dev-app",
+    "masterKey": "qik-dev-masterkey",
+    "appName": "Qik-Dev-2",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://acrcloud.herokuapp.com/app",
+    "appId": "AcrCloud",
+    "masterKey": "ACRMasterKey",
+    "appName": "AcrCloud",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://dev-server.qik.ai/app",
+    "appId": "qik-dev-app",
+    "masterKey": "qik-dev-masterkey",
+    "appName": "Qik-server-dev",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://server.teamosol.com/app",
+    "appId": "pro-server-uprodid",
+    "masterKey": "upro-server-key-712217",
+    "appName": "pro-server-uprod",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  },{
+    "serverURL": "https://server.prozone.tech/app",
+    "appId": "pro-server-prodid",
+    "masterKey": "pro-server-key-712217",
+    "appName": "pro-server-prod",
+    "iconName": "",
+    "primaryBackgroundColor": "",
+    "secondaryBackgroundColor": ""
+  }
+],
+  "iconsFolder": "icons",
+"users": [
     {
-      "serverURL": "http://localhost:1337/parse",
-      "appId": "hello",
-      "masterKey": "world",
-      "appName": "",
-      "iconName": "",
-      "primaryBackgroundColor": "",
-      "secondaryBackgroundColor": ""
+      "user":"amol",
+      "pass":"abc123456"
+    },
+    {
+      "user":"pooja",
+      "pass":"abc1234567",
+"apps": [{"appId": "nxg-parse-appid"}]
+    },
+{
+      "user":"prafull",
+      "pass":"nxg123456",
+"apps": [{"appId":"pro-server-uprodid"}]
+    },
+{
+      "user":"aparna",
+      "pass":"abcdefg",
+"apps": [{"appId": "qik-dev-app"},{"appId":"shbjmmhfcp"},{"appId":"pro-server-uprodid"}]
     }
   ],
+  "useEncryptedPasswords": false,
+  "allowInsecureHTTP":true,
   "iconsFolder": "icons"
 }
