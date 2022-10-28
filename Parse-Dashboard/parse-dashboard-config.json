@@ -48,7 +48,7 @@
     "primaryBackgroundColor": "",
     "secondaryBackgroundColor": ""
   },{
-    "serverURL": "https://server.teamosol.com/app",
+    "serverURL": "https://server.prozone.tech/app",
     "appId": "pro-server-uprodid",
     "masterKey": "upro-server-key-712217",
     "appName": "pro-server-uprod",
