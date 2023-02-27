@@ -16,20 +16,32 @@ export default class Login extends React.Component {
     super();
 
     let errorDiv = document.getElementById('login_errors');
+    let otpLength = 6;
     if (errorDiv) {
       this.errors = errorDiv.innerHTML;
+      try {
+        const json = JSON.parse(this.errors)
+        this.errors = json.text
+        otpLength = json.otpLength;
+      } catch (e) {
+        this.errors = this.errors ?? `Error: ${JSON.stringify(e)}`;
+      }
     }
 
+    const url = new URL(window.location);
+    const redirect = url.searchParams.get('redirect');
     this.state = {
       forgot: false,
       username: sessionStorage.getItem('username') || '',
-      password: sessionStorage.getItem('password') || ''
+      password: sessionStorage.getItem('password') || '',
+      redirect: redirect !== '/' ? redirect : undefined
     };
     sessionStorage.clear();
     setBasePath(props.path);
     this.inputRefUser = React.createRef();
     this.inputRefPass = React.createRef();
     this.inputRefMfa = React.createRef();
+    this.otpLength = otpLength;
   }
 
   componentDidMount() {
@@ -53,6 +65,15 @@ export default class Login extends React.Component {
     const {path} = this.props;
     const updateField  = (field, e) => {
       this.setState({[field]: e.target.value});
+      if (field === 'otp' && e.target.value.length >= this.otpLength) {
+        const input = document.querySelectorAll('input');
+        for (const field of input) {
+          if (field.type === 'submit') {
+            field.click();
+            break;
+          }
+        }
+      }
     }
     const formSubmit = () => {
       sessionStorage.setItem('username', this.state.username);
@@ -88,6 +109,11 @@ export default class Login extends React.Component {
               ref={this.inputRefPass}
             />
           } />
+          {this.state.redirect && <input
+              name='redirect'
+              type='hidden'
+              value={this.state.redirect}
+            />}
         {
           this.errors && this.errors.includes('one-time') ?
           <LoginRow
@@ -95,7 +121,11 @@ export default class Login extends React.Component {
             input={
               <input
                 name='otpCode'
-                type='number'
+                type='text'
+                inputMode="numeric"
+                autoComplete='one-time-code'
+                pattern="[0-9]*"
+                onChange={e => updateField('otp', e)}
                 ref={this.inputRefMfa}
               />
             } />

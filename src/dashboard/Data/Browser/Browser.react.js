@@ -21,7 +21,7 @@ import AttachSelectedRowsDialog           from 'dashboard/Data/Browser/AttachSel
 import CloneSelectedRowsDialog            from 'dashboard/Data/Browser/CloneSelectedRowsDialog.react';
 import EditRowDialog                      from 'dashboard/Data/Browser/EditRowDialog.react';
 import ExportSelectedRowsDialog           from 'dashboard/Data/Browser/ExportSelectedRowsDialog.react';
-import history                            from 'dashboard/history';
+import ExportSchemaDialog                 from 'dashboard/Data/Browser/ExportSchemaDialog.react';
 import { List, Map }                      from 'immutable';
 import Notification                       from 'dashboard/Data/Browser/Notification.react';
 import Parse                              from 'parse';
@@ -37,12 +37,13 @@ import subscribeTo                        from 'lib/subscribeTo';
 import * as ColumnPreferences             from 'lib/ColumnPreferences';
 import { Helmet }                         from 'react-helmet';
 import generatePath from 'lib/generatePath';
+import { withRouter } from 'lib/withRouter';
 
 // The initial and max amount of rows fetched by lazy loading
 const MAX_ROWS_FETCHED = 200;
 
-export default
 @subscribeTo('Schema', 'schema')
+@withRouter
 class Browser extends DashboardView {
   constructor() {
     super();
@@ -56,6 +57,7 @@ class Browser extends DashboardView {
       showRemoveColumnDialog: false,
       showDropClassDialog: false,
       showExportDialog: false,
+      showExportSchemaDialog: false,
       showAttachRowsDialog: false,
       showEditRowDialog: false,
       showPointerKeyDialog: false,
@@ -70,6 +72,8 @@ class Browser extends DashboardView {
       filters: new List(),
       ordering: '-createdAt',
       selection: {},
+      exporting: false,
+      exportingCount: 0,
 
       data: null,
       lastMax: -1,
@@ -88,7 +92,7 @@ class Browser extends DashboardView {
       requiredColumnFields: [],
 
       useMasterKey: true,
-      currentUser: Parse.User.current()
+      currentUser: Parse.User.current(),
     };
 
     this.prefetchData = this.prefetchData.bind(this);
@@ -114,6 +118,7 @@ class Browser extends DashboardView {
     this.confirmCloneSelectedRows = this.confirmCloneSelectedRows.bind(this);
     this.cancelCloneSelectedRows = this.cancelCloneSelectedRows.bind(this);
     this.showExportSelectedRowsDialog = this.showExportSelectedRowsDialog.bind(this);
+    this.showExportSchemaDialog = this.showExportSchemaDialog.bind(this);
     this.confirmExportSelectedRows = this.confirmExportSelectedRows.bind(this);
     this.cancelExportSelectedRows = this.cancelExportSelectedRows.bind(this);
     this.getClassRelationColumns = this.getClassRelationColumns.bind(this);
@@ -147,8 +152,15 @@ class Browser extends DashboardView {
     this.saveEditCloneRow = this.saveEditCloneRow.bind(this);
     this.abortEditCloneRow = this.abortEditCloneRow.bind(this);
     this.cancelPendingEditRows = this.cancelPendingEditRows.bind(this);
+    this.redirectToFirstClass = this.redirectToFirstClass.bind(this);
 
     this.dataBrowserRef = React.createRef();
+
+    window.addEventListener('popstate', () => {
+      this.setState({
+        relation: null
+      })
+    });
   }
 
   componentWillMount() {
@@ -171,10 +183,11 @@ class Browser extends DashboardView {
       if (this.props.params.appId !== nextProps.params.appId || !this.props.params.className) {
         this.setState({ counts: {} });
         Parse.Object._clearAllState();
+
+        nextProps.schema.dispatch(ActionTypes.FETCH)
+          .then(() => this.handleFetchedSchema());
       }
       this.prefetchData(nextProps, nextContext);
-      nextProps.schema.dispatch(ActionTypes.FETCH)
-      .then(() => this.handleFetchedSchema());
     }
     if (!nextProps.params.className && nextProps.schema.data.get('classes')) {
       this.redirectToFirstClass(nextProps.schema.data.get('classes'), nextContext);
@@ -238,7 +251,7 @@ class Browser extends DashboardView {
         }
         return a.toUpperCase() < b.toUpperCase() ? -1 : 1;
       });
-      history.replace(generatePath(context || this.context, 'browser/' + classes[0]));
+      this.props.navigate(generatePath(context || this.context, 'browser/' + classes[0]), { replace: true });
     }
   }
 
@@ -291,7 +304,7 @@ class Browser extends DashboardView {
   createClass(className) {
     this.props.schema.dispatch(ActionTypes.CREATE_CLASS, { className }).then(() => {
       this.state.counts[className] = 0;
-      history.push(generatePath(this.context, 'browser/' + className));
+      this.props.navigate(generatePath(this.context, 'browser/' + className));
     }).finally(() => {
       this.setState({ showCreateClassDialog: false });
     });
@@ -301,7 +314,7 @@ class Browser extends DashboardView {
     this.props.schema.dispatch(ActionTypes.DROP_CLASS, { className }).then(() => {
       this.setState({showDropClassDialog: false });
       delete this.state.counts[className];
-      history.push(generatePath(this.context, 'browser'));
+      this.props.navigate(generatePath(this.context, 'browser'));
     }, (error) => {
       let msg = typeof error === 'string' ? error : error.message;
       if (msg) {
@@ -316,6 +329,37 @@ class Browser extends DashboardView {
     this.context.exportClass(className).finally(() => {
       this.setState({ showExportDialog: false });
     });
+  }
+
+  async exportSchema(className, all) {
+    try {
+      this.showNote('Exporting schema...');
+      this.setState({ showExportSchemaDialog: false });
+      let schema = [];
+      if (all) {
+        schema = await Parse.Schema.all();
+      } else {
+        schema = await new Parse.Schema(className).get();
+      }
+      const element = document.createElement('a');
+      const file = new Blob(
+        [
+          JSON.stringify(
+            schema,
+            null,
+            2,
+          ),
+        ],
+        { type: 'application/json' }
+      );
+      element.href = URL.createObjectURL(file);
+      element.download = `${all ? 'schema' : className}.json`;
+      document.body.appendChild(element); // Required for this to work in FireFox
+      element.click();
+      document.body.removeChild(element);
+    } catch (msg) {
+      this.showNote(msg, true);
+    }
   }
 
   newColumn(payload, required) {
@@ -794,7 +838,7 @@ class Browser extends DashboardView {
       const _filters = JSON.stringify(filters.toJSON());
       const url = `browser/${source}${(filters.size === 0 ? '' : `?filters=${(encodeURIComponent(_filters))}`)}`;
       // filters param change is making the fetch call
-      history.push(generatePath(this.context, url));
+      this.props.navigate(generatePath(this.context, url));
     }
   }
 
@@ -829,8 +873,9 @@ class Browser extends DashboardView {
         filterQueryString = encodeURIComponent(JSON.stringify(filters.toJSON()));
       }
       const url = `${this.getRelationURL()}${filterQueryString ? `?filters=${filterQueryString}` : ''}`;
-      history.push(url);
+      this.props.navigate(url);
     });
+    this.fetchRelation(relation, filters);
   }
 
   handlePointerClick({ className, id, field = 'objectId' }) {
@@ -839,7 +884,7 @@ class Browser extends DashboardView {
         constraint: 'eq',
         compareTo: id
     }]);
-    history.push(generatePath(this.context, `browser/${className}?filters=${encodeURIComponent(filters)}`));
+    this.props.navigate(generatePath(this.context, `browser/${className}?filters=${encodeURIComponent(filters)}`));
   }
 
   handlePointerCmdClick({ className, id, field = 'objectId' }) {
@@ -1080,6 +1125,7 @@ class Browser extends DashboardView {
       this.state.showRemoveColumnDialog ||
       this.state.showDropClassDialog ||
       this.state.showExportDialog ||
+      this.state.showExportSchema ||
       this.state.rowsToDelete ||
       this.state.showAttachRowsDialog ||
       this.state.showAttachSelectedRowsDialog ||
@@ -1240,21 +1286,24 @@ class Browser extends DashboardView {
     });
   }
 
+  showExportSchemaDialog() {
+    this.setState({
+      showExportSchemaDialog: true
+    })
+  }
+
   cancelExportSelectedRows() {
     this.setState({
       rowsToExport: null
     });
   }
 
-  async confirmExportSelectedRows(rows) {
-    this.setState({ rowsToExport: null });
+  async confirmExportSelectedRows(rows, type, indentation) {
+    this.setState({ rowsToExport: null, exporting: true, exportingCount: 0 });
     const className = this.props.params.className;
     const query = new Parse.Query(className);
 
-    if (rows['*']) {
-      // Export all
-      query.limit(10000);
-    } else {
+    if (!rows['*']) {
       // Export selected
       const objectIds = [];
       for (const objectId in this.state.rowsToExport) {
@@ -1264,75 +1313,136 @@ class Browser extends DashboardView {
       query.limit(objectIds.length);
     }
 
-    const classColumns = this.getClassColumns(className, false);
-    // create object with classColumns as property keys needed for ColumnPreferences.getOrder function
-    const columnsObject = {};
-    classColumns.forEach((column) => {
-      columnsObject[column.name] = column;
-    });
-    // get ordered list of class columns
-    const columns = ColumnPreferences.getOrder(
-      columnsObject,
-      this.context.applicationId,
-      className
-    ).filter(column => column.visible);
+    const processObjects = (objects) => {
+      const classColumns = this.getClassColumns(className, false);
+      // create object with classColumns as property keys needed for ColumnPreferences.getOrder function
+      const columnsObject = {};
+      classColumns.forEach((column) => {
+        columnsObject[column.name] = column;
+      });
+      // get ordered list of class columns
+      const columns = ColumnPreferences.getOrder(
+        columnsObject,
+        this.context.applicationId,
+        className
+      ).filter((column) => column.visible);
 
-    const objects = await query.find({ useMasterKey: true });
-    let csvString = columns.map(column => column.name).join(',') + '\n';
-    for (const object of objects) {
-      const row = columns.map(column => {
-        const type = columnsObject[column.name].type;
-        if (column.name === 'objectId') {
-          return object.id;
-        } else if (type === 'Relation' || type === 'Pointer') {
-          if (object.get(column.name)) {
-            return  object.get(column.name).id
-          } else {
-            return ''
-          }
-        } else {
-          let colValue;
-          if (column.name === 'ACL') {
-            colValue = object.getACL();
-          } else {
-            colValue = object.get(column.name);
-          }
-          // Stringify objects and arrays
-          if (Object.prototype.toString.call(colValue) === '[object Object]' || Object.prototype.toString.call(colValue) === '[object Array]') {
-            colValue = JSON.stringify(colValue);
-          }
-          if(typeof colValue === 'string') {
-            if (colValue.includes('"')) {
-              // Has quote in data, escape and quote
-              // If the value contains both a quote and delimiter, adding quotes and escaping will take care of both scenarios
-              colValue = colValue.split('"').join('""');
-              return `"${colValue}"`;
-            } else if (colValue.includes(',')) {
-              // Has delimiter in data, surround with quote (which the value doesn't already contain)
-              return `"${colValue}"`;
+      if (type === '.json') {
+        const element = document.createElement('a');
+        const file = new Blob(
+          [
+            JSON.stringify(
+              objects.map((obj) => {
+                const json = obj._toFullJSON();
+                delete json.__type;
+                return json;
+              }),
+              null,
+              indentation ? 2 : null,
+            ),
+          ],
+          { type: 'application/json' }
+        );
+        element.href = URL.createObjectURL(file);
+        element.download = `${className}.json`;
+        document.body.appendChild(element); // Required for this to work in FireFox
+        element.click();
+        document.body.removeChild(element);
+        return;
+      }
+
+      let csvString = columns.map((column) => column.name).join(',') + '\n';
+      for (const object of objects) {
+        const row = columns
+          .map((column) => {
+            const type = columnsObject[column.name].type;
+            if (column.name === 'objectId') {
+              return object.id;
+            } else if (type === 'Relation' || type === 'Pointer') {
+              if (object.get(column.name)) {
+                return object.get(column.name).id;
+              } else {
+                return '';
+              }
             } else {
-              // No quote or delimiter, just include plainly
-              return `${colValue}`;
+              let colValue;
+              if (column.name === 'ACL') {
+                colValue = object.getACL();
+              } else {
+                colValue = object.get(column.name);
+              }
+              // Stringify objects and arrays
+              if (
+                Object.prototype.toString.call(colValue) ===
+                  '[object Object]' ||
+                Object.prototype.toString.call(colValue) === '[object Array]'
+              ) {
+                colValue = JSON.stringify(colValue);
+              }
+              if (typeof colValue === 'string') {
+                if (colValue.includes('"')) {
+                  // Has quote in data, escape and quote
+                  // If the value contains both a quote and delimiter, adding quotes and escaping will take care of both scenarios
+                  colValue = colValue.split('"').join('""');
+                  return `"${colValue}"`;
+                } else if (colValue.includes(',')) {
+                  // Has delimiter in data, surround with quote (which the value doesn't already contain)
+                  return `"${colValue}"`;
+                } else {
+                  // No quote or delimiter, just include plainly
+                  return `${colValue}`;
+                }
+              } else if (colValue === undefined) {
+                // Export as empty CSV field
+                return '';
+              } else {
+                return `${colValue}`;
+              }
             }
-          } else if (colValue === undefined) {
-            // Export as empty CSV field
-            return '';
-          } else {
-            return `${colValue}`;
-          }
-        }
-      }).join(',');
-      csvString += row + '\n';
-    }
+          })
+          .join(',');
+        csvString += row + '\n';
+      }
 
-    // Deliver to browser to download file
-    const element = document.createElement('a');
-    const file = new Blob([csvString], { type: 'text/csv' });
-    element.href = URL.createObjectURL(file);
-    element.download = `${className}.csv`;
-    document.body.appendChild(element); // Required for this to work in FireFox
-    element.click();
-    document.body.removeChild(element);
+      // Deliver to browser to download file
+      const element = document.createElement('a');
+      const file = new Blob([csvString], { type: 'text/csv' });
+      element.href = URL.createObjectURL(file);
+      element.download = `${className}.csv`;
+      document.body.appendChild(element); // Required for this to work in FireFox
+      element.click();
+      document.body.removeChild(element);
+    };
+
+    if (!rows['*']) {
+      const objects = await query.find({ useMasterKey: true });
+      processObjects(objects);
+      this.setState({ exporting: false, exportingCount: objects.length });
+    } else {
+      let batch = [];
+      query.eachBatch(
+        (obj) => {
+          batch.push(...obj);
+          if (batch.length % 10 === 0) {
+            this.setState({ exportingCount: batch.length });
+          }
+          const one_gigabyte = Math.pow(2, 30);
+          const size =
+            new TextEncoder().encode(JSON.stringify(batch)).length /
+            one_gigabyte;
+          if (size.length > 1) {
+            processObjects(batch);
+            batch = [];
+          }
+          if (obj.length !== 100) {
+            processObjects(batch);
+            batch = [];
+            this.setState({ exporting: false, exportingCount: 0 });
+          }
+        },
+        { useMasterKey: true }
+      );
+    }
   }
 
   getClassRelationColumns(className) {
@@ -1536,6 +1646,7 @@ class Browser extends DashboardView {
             onEditSelectedRow={this.showEditRowDialog}
             onEditPermissions={this.onDialogToggle}
             onExportSelectedRows={this.showExportSelectedRowsDialog}
+            onExportSchema={this.showExportSchemaDialog}
 
             onSaveNewRow={this.saveNewRow}
             onShowPointerKey={this.showPointerKeyDialog}
@@ -1650,6 +1761,14 @@ class Browser extends DashboardView {
           onCancel={() => this.setState({ showExportDialog: false })}
           onConfirm={() => this.exportClass(className)} />
       );
+    } else if (this.state.showExportSchemaDialog) {
+      extras = (
+        <ExportSchemaDialog
+          className={className}
+          schema={this.props.schema.data.get('classes')}
+          onCancel={() => this.setState({ showExportSchemaDialog: false })}
+          onConfirm={(...args) => this.exportSchema(...args)} />
+      );
     } else if (this.state.showAttachRowsDialog) {
       extras = (
         <AttachRowsDialog
@@ -1745,8 +1864,10 @@ class Browser extends DashboardView {
         <ExportSelectedRowsDialog
           className={className}
           selection={this.state.rowsToExport}
+          count={this.state.counts[className]}
+          data={this.state.data}
           onCancel={this.cancelExportSelectedRows}
-          onConfirm={() => this.confirmExportSelectedRows(this.state.rowsToExport)}
+          onConfirm={(type, indentation) => this.confirmExportSelectedRows(this.state.rowsToExport, type, indentation)}
         />
       );
     }
@@ -1763,6 +1884,11 @@ class Browser extends DashboardView {
         <Notification note={this.state.lastNote} isErrorNote={false}/>
       );
     }
+    else if (this.state.exporting) {
+      notification = (
+        <Notification note={`Exporting ${this.state.exportingCount}+ objects...`} isErrorNote={false}/>
+      );
+    }
     return (
       <div>
         <Helmet>
@@ -1775,3 +1901,5 @@ class Browser extends DashboardView {
     );
   }
 }
+
+export default Browser;

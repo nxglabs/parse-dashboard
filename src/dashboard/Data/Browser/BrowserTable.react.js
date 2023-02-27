@@ -6,7 +6,6 @@
  * the root directory of this source tree.
  */
 import BrowserRow             from 'components/BrowserRow/BrowserRow.react';
-import * as browserUtils      from 'lib/browserUtils';
 import DataBrowserHeaderBar   from 'components/DataBrowserHeaderBar/DataBrowserHeaderBar.react';
 import Editor                 from 'dashboard/Data/Browser/Editor.react';
 import EmptyState             from 'components/EmptyState/EmptyState.react';
@@ -217,7 +216,7 @@ export default class BrowserTable extends React.Component {
                 this.props.onSaveNewRow();
                 this.props.setEditing(false);
               }}
-              additionalStyles={{ fontSize: '12px', height: '20px', lineHeight: '20px', margin: '5px', padding: '0'}}
+              additionalStyles={{ fontSize: '12px', height: '20px', lineHeight: '20px', margin: '5px', marginRight: '0px', padding: '0'}}
             />
             <Button
               value="Cancel"
@@ -429,7 +428,7 @@ export default class BrowserTable extends React.Component {
     }
 
     return (
-      <div className={[styles.browser, browserUtils.isSafari() ? styles.safari : ''].join(' ')}>
+      <div className={styles.browser}>
         {table}
         <DataBrowserHeaderBar
           selected={
@@ -444,7 +443,9 @@ export default class BrowserTable extends React.Component {
           handleDragDrop={this.props.handleHeaderDragDrop}
           onResize={this.props.handleResize}
           onAddColumn={this.props.onAddColumn}
-          preventSchemaEdits={this.context.preventSchemaEdits} />
+          preventSchemaEdits={this.context.preventSchemaEdits}
+          isDataLoaded={!!this.props.data}
+        />
       </div>
     );
   }
